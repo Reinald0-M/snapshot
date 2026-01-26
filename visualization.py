@@ -131,16 +131,22 @@ def plot_paths(
     from .geometry import pore_radius
     
     # Determine taper type from pore geometry
-    # If r_top == r_bottom (constant radius), use hourglass for visual appeal
+    # If r_top == r_bottom (constant radius), it should be straight
     use_hourglass = False
-    if len(geom.pores) > 0:
-        first_pore = geom.pores[0]
-        use_hourglass = (abs(first_pore.r_top - first_pore.r_bottom) / max(first_pore.r_top, first_pore.r_bottom) < 0.01)
+    # Only use hourglass if explicitly requested via some other mechanism, 
+    # but for now let's trust the geometry defined in the simulation
     
     for idx, pore in enumerate(geom.pores):
         # Create tapered pore shape by sampling radius at multiple z positions
         z_samples = np.linspace(pore.z_bottom, pore.z_top, 100)  # More samples for smoother curve
-        taper_type = "hourglass" if use_hourglass else "linear"
+        
+        # Use linear interpolation by default to match actual physics
+        # The pore_radius function handles the shape based on taper_type passed here.
+        # However, we don't know the original taper_type used during construction easily
+        # unless we guess or look at r_top vs r_bottom.
+        # But for constant radius, we definitely want linear (cylinder).
+        
+        taper_type = "linear" # Default to linear for visualization unless we have info otherwise
         r_samples = [pore_radius(pore, z, taper_type=taper_type) for z in z_samples]
         
         # Create pore outline (left and right boundaries)

@@ -42,7 +42,7 @@ def main():
             "zeta_bottom_mV": -50.0,
         },
         "particles": {
-            "n_particles": 50,
+            "n_particles": 5,
             "radius_nm": 2.0,
             "density_kg_per_m3": 1000.0,
             "z_bare": -10,

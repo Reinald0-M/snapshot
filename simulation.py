@@ -87,7 +87,7 @@ def run_simulation(config: Optional[dict] = None, config_path: Optional[str] = N
     # Build geometry
     geom = build_simple_array(
         n_pores=geom_config.get("n_pores", 3),
-        spacing_nm=geom_config.get("pore_spacing_nm", 50.0),
+        spacing_nm=geom_config.get("pore_spacing_nm", 10.0),
         r_pore_nm=geom_config.get("pore_radius_nm", 5.0),
         L_pore_nm=geom_config.get("pore_length_nm", 10.0),
         z_top_nm=geom_config.get("z_top_nm", 100.0),

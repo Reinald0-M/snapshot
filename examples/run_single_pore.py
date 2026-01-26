@@ -11,9 +11,9 @@ from pathlib import Path
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from nanopore_array_sim import run_simulation
-from nanopore_array_sim.visualization import plot_paths, plot_landing_histogram, plot_z_vs_time
-from nanopore_array_sim.analysis import compute_translocation_stats
+from snapshot import run_simulation
+from snapshot.visualization import plot_paths, plot_landing_histogram, plot_z_vs_time
+from snapshot.analysis import compute_translocation_stats
 import numpy as np
 
 def main():
@@ -29,8 +29,9 @@ def main():
             "pore_spacing_nm": 50.0,  # Not used for single pore
             "pore_radius_nm": 5.0,
             "pore_length_nm": 10.0,
-            "z_top_nm": 100.0,
+            "z_top_nm": 30.0,
             "z_bottom_nm": -50.0,
+            'taper_type': 'constant'
         },
         "electrostatics": {
             "Phi_top_mV": 200.0,  # Positive voltage in top reservoir
@@ -45,7 +46,7 @@ def main():
             "radius_nm": 1.0,
             "density_kg_per_m3": 1350.0,
             "z_bare": 5,
-            "initial_distribution": "uniform",
+            "initial_distribution": "pore_centered",
             "initial_velocity": "zero",
         },
         "solution": {
@@ -78,14 +79,14 @@ def main():
         print(f"  Std dev: {stats['std']*1e9:.2f} ns")
     
     # Create output directory
-    output_dir = Path(__file__).parent.parent.parent / "figs"
+    output_dir = Path(__file__).parent.parent / "figs"
     output_dir.mkdir(exist_ok=True)
     
     # Generate plots
     print("\nGenerating plots...")
     
     # Trajectory plot (with potential annotations)
-    fig1 = plot_paths(result, show_potential=True)
+    fig1 = plot_paths(result, show_potential=False)
     fig1.savefig(output_dir / "single_pore_trajectories.png", dpi=150, bbox_inches="tight")
     print(f"  Saved: {output_dir / 'single_pore_trajectories.png'}")
     
