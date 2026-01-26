@@ -1,0 +1,35 @@
+geometry:
+  n_pores: 3
+  pore_spacing_nm: 50.0
+  pore_radius_nm: 5.0
+  pore_length_nm: 10.0
+  z_top_nm: 100.0
+  z_bottom_nm: -50.0
+
+electrostatics:
+  Phi_top_mV: 200.0
+  Phi_mid_mV: -200.0
+  Phi_bottom_mV: -1000.0
+  zeta_top_mV: -50.0
+  zeta_pore_mV: -100.0
+  zeta_bottom_mV: -50.0
+
+particles:
+  n_particles: 100
+  radius_nm: 2.0
+  density_kg_per_m3: 1000.0
+  z_bare: -10
+  initial_distribution: "uniform"  # or "pore_centered"
+  initial_velocity: "zero"  # or "maxwell_boltzmann"
+
+solution:
+  solvent: "water"
+  salt: "NaCl"
+  concentration_M: 0.1
+  T_K: 298.15
+
+simulation:
+  t_max_s: 1e-6
+  dt_s: null  # auto-compute from m/zeta
+  n_tracked: 20  # store full trajectories for subset
+  seed: 42
