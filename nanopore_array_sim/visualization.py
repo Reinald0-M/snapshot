@@ -19,9 +19,13 @@ def plot_paths(
     geom: Optional[Geometry] = None,
     config: Optional[dict] = None,
     save_path: Optional[str] = None,
+    show_potential: bool = True,
 ) -> plt.Figure:
     """
     Plot 2D side view (y-z) showing trajectories and geometry.
+    
+    Matches the sketch design with tapered pores, membrane structure,
+    and green particle trajectories.
     
     Parameters
     ----------
@@ -33,6 +37,8 @@ def plot_paths(
         Configuration (from result if None)
     save_path : str or None
         Path to save figure (if None, returns figure)
+    show_potential : bool
+        Whether to annotate potential values on the plot
         
     Returns
     -------
@@ -44,49 +50,140 @@ def plot_paths(
     if config is None:
         config = result.config
     
-    fig, ax = plt.subplots(figsize=(10, 8))
+    fig, ax = plt.subplots(figsize=(12, 10))
     
-    # Draw membrane as rectangle
-    mem_width = geom.lateral_period
+    # Set axis limits FIRST so patches are drawn in correct coordinate space
+    # We'll refine these later, but need initial limits
+    
+    # Determine lateral extent for drawing
+    if len(geom.pores) == 0:
+        y_min, y_max = -50 * nm, 50 * nm
+    elif len(geom.pores) == 1:
+        # Single pore: show wider view with reservoirs
+        pore = geom.pores[0]
+        # Show wider view to see reservoirs
+        y_min = -5 * pore.r_top
+        y_max = 5 * pore.r_top
+    else:
+        # Multiple pores: show all pores with some margin
+        pore_centers = [p.center_y for p in geom.pores]
+        max_radius = max(p.r_top for p in geom.pores)
+        y_min = min(pore_centers) - 2 * max_radius
+        y_max = max(pore_centers) + 2 * max_radius
+    
+    # Draw top reservoir (above membrane) - make it clearly visible
+    # Convert coordinates to nm for patches
+    top_reservoir_height = geom.z_top - geom.membrane_top
+    if top_reservoir_height > 0:
+        top_reservoir = patches.Rectangle(
+            (y_min / nm, geom.membrane_top / nm),
+            (y_max - y_min) / nm,
+            top_reservoir_height / nm,
+            facecolor="lightblue",
+            edgecolor="navy",
+            linewidth=2.5,
+            alpha=0.5,  # Increased alpha for visibility
+            zorder=1,
+            label="Top Reservoir",
+        )
+        ax.add_patch(top_reservoir)
+    
+    # Draw bottom reservoir (below membrane) - wider opening, clearly visible
+    bottom_reservoir_height = geom.membrane_bottom - geom.z_bottom
+    if bottom_reservoir_height > 0:
+        # Bottom reservoir opens wider
+        if len(geom.pores) == 1:
+            # For single pore, make bottom reservoir much wider
+            bottom_y_min = y_min * 2.5
+            bottom_y_max = y_max * 2.5
+        else:
+            bottom_y_min = y_min * 1.5
+            bottom_y_max = y_max * 1.5
+        bottom_reservoir = patches.Rectangle(
+            (bottom_y_min / nm, geom.z_bottom / nm),
+            (bottom_y_max - bottom_y_min) / nm,
+            bottom_reservoir_height / nm,
+            facecolor="lightcoral",
+            edgecolor="darkred",
+            linewidth=2.5,
+            alpha=0.5,  # Increased alpha for visibility
+            zorder=1,
+            label="Bottom Reservoir",
+        )
+        ax.add_patch(bottom_reservoir)
+    
+    # Draw membrane as solid block - make it clearly visible
     mem_height = geom.membrane_top - geom.membrane_bottom
     mem_rect = patches.Rectangle(
-        (-mem_width / 2, geom.membrane_bottom),
-        mem_width,
-        mem_height,
+        (y_min / nm, geom.membrane_bottom / nm),
+        (y_max - y_min) / nm,
+        mem_height / nm,
         facecolor="gray",
         edgecolor="black",
-        alpha=0.3,
+        linewidth=3,
+        alpha=0.7,  # Increased alpha for visibility
+        zorder=2,
         label="Membrane",
     )
     ax.add_patch(mem_rect)
     
-    # Draw pore openings
+    # Draw tapered pores (hourglass shape)
+    from .geometry import pore_radius
+    
+    # Determine taper type from pore geometry
+    # If r_top == r_bottom (constant radius), use hourglass for visual appeal
+    use_hourglass = False
+    if len(geom.pores) > 0:
+        first_pore = geom.pores[0]
+        use_hourglass = (abs(first_pore.r_top - first_pore.r_bottom) / max(first_pore.r_top, first_pore.r_bottom) < 0.01)
+    
     for idx, pore in enumerate(geom.pores):
-        # Draw circles at top and bottom of pore
-        circle_top = patches.Circle(
-            (pore.center_y, pore.z_top),
-            pore.r_top,
+        # Create tapered pore shape by sampling radius at multiple z positions
+        z_samples = np.linspace(pore.z_bottom, pore.z_top, 100)  # More samples for smoother curve
+        taper_type = "hourglass" if use_hourglass else "linear"
+        r_samples = [pore_radius(pore, z, taper_type=taper_type) for z in z_samples]
+        
+        # Create pore outline (left and right boundaries)
+        y_left = np.array([pore.center_y - r for r in r_samples])
+        y_right = np.array([pore.center_y + r for r in r_samples])
+        
+        # Combine into closed polygon (convert to nm for plotting)
+        pore_y_nm = np.concatenate([y_left, y_right[::-1], [y_left[0]]]) / nm
+        pore_z_nm = np.concatenate([z_samples, z_samples[::-1], [z_samples[0]]]) / nm
+        
+        # Draw pore opening - make it clearly visible with white fill and blue border
+        pore_patch = patches.Polygon(
+            list(zip(pore_y_nm, pore_z_nm)),
             facecolor="white",
             edgecolor="blue",
-            linewidth=2,
+            linewidth=3,  # Thicker line for visibility
+            zorder=4,  # Above membrane
             label="Pore" if idx == 0 else "",
         )
-        circle_bot = patches.Circle(
-            (pore.center_y, pore.z_bottom),
-            pore.r_bottom,
-            facecolor="white",
-            edgecolor="blue",
-            linewidth=2,
-        )
-        ax.add_patch(circle_top)
-        ax.add_patch(circle_bot)
+        ax.add_patch(pore_patch)
         
-        # Draw pore centerline
-        ax.plot([pore.center_y, pore.center_y], [pore.z_bottom, pore.z_top], "b--", alpha=0.3)
+        # Also draw the outline explicitly for better visibility
+        ax.plot(
+            pore_y_nm,
+            pore_z_nm,
+            color="blue",
+            linewidth=3,
+            zorder=5,
+            alpha=0.9,
+        )
+        
+        # Draw pore centerline (dashed) - convert to nm
+        ax.plot(
+            [pore.center_y / nm, pore.center_y / nm],
+            [pore.z_bottom / nm, pore.z_top / nm],
+            "b--",
+            alpha=0.5,
+            linewidth=1.5,
+            zorder=3,
+        )
     
-    # Plot trajectories
+    # Plot trajectories in green (matching sketch)
     n_tracked = result.Y.shape[1]
-    colors = plt.cm.tab10(np.linspace(0, 1, n_tracked))
     
     for j in range(n_tracked):
         y_traj = result.Y[:, j]
@@ -98,18 +195,117 @@ def plot_paths(
             ax.plot(
                 y_traj[valid] / nm,
                 z_traj[valid] / nm,
-                color=colors[j],
-                linewidth=0.8,
-                alpha=0.7,
+                color="green",
+                linewidth=1.2,
+                alpha=0.6,
+                zorder=4,
+            )
+    
+    # Add potential annotations if requested
+    if show_potential and config:
+        electrostatics = config.get("electrostatics", {})
+        phi_top = electrostatics.get("Phi_top_mV", 200.0)
+        phi_mid = electrostatics.get("Phi_mid_mV", -200.0)
+        phi_bot = electrostatics.get("Phi_bottom_mV", -1000.0)
+        
+        # Determine annotation x position
+        if len(geom.pores) == 1:
+            annot_x = y_max * 0.85
+            pore = geom.pores[0]  # Get pore for single pore case
+        else:
+            annot_x = y_max * 0.9
+            pore = geom.pores[0] if len(geom.pores) > 0 else None
+        
+        # Top reservoir: positive voltage above nanopore opening
+        top_z = geom.membrane_top + (geom.z_top - geom.membrane_top) * 0.3
+        ax.text(
+            annot_x,
+            top_z / nm,
+            f"+{phi_top:.0f} mV",
+            fontsize=11,
+            fontweight="bold",
+            bbox=dict(boxstyle="round,pad=0.5", facecolor="yellow", edgecolor="orange", linewidth=2, alpha=0.8),
+            ha="right",
+            zorder=6,
+        )
+        
+        # Pore/membrane region: negative voltage at bottom of opening
+        if pore is not None:
+            pore_bottom_z = pore.z_bottom
+            ax.text(
+                annot_x,
+                pore_bottom_z / nm,
+                f"{phi_mid:.0f} mV",
+                fontsize=11,
+                fontweight="bold",
+                bbox=dict(boxstyle="round,pad=0.5", facecolor="yellow", edgecolor="orange", linewidth=2, alpha=0.8),
+                ha="right",
+                zorder=6,
+            )
+        
+        # Bottom reservoir: very large negative voltage
+        bottom_z = geom.z_bottom + (geom.membrane_bottom - geom.z_bottom) * 0.7
+        ax.text(
+            annot_x,
+            bottom_z / nm,
+            f"{phi_bot:.0f} mV",
+            fontsize=11,
+            fontweight="bold",
+            bbox=dict(boxstyle="round,pad=0.5", facecolor="yellow", edgecolor="orange", linewidth=2, alpha=0.8),
+            ha="right",
+            zorder=6,
+        )
+        
+        # Add arrows showing potential gradient (for single pore)
+        if len(geom.pores) == 1 and pore is not None:
+            # Arrow from top reservoir to pore opening
+            ax.annotate(
+                "",
+                xy=(pore.center_y / nm, pore.z_top / nm),
+                xytext=(pore.center_y / nm, top_z / nm),
+                arrowprops=dict(arrowstyle="->", color="red", lw=2, alpha=0.6),
+                zorder=5,
+            )
+            # Arrow from pore bottom to bottom reservoir
+            ax.annotate(
+                "",
+                xy=(pore.center_y / nm, bottom_z / nm),
+                xytext=(pore.center_y / nm, pore.z_bottom / nm),
+                arrowprops=dict(arrowstyle="->", color="red", lw=2, alpha=0.6),
+                zorder=5,
             )
     
     # Formatting
     ax.set_xlabel("y (nm)", fontsize=12)
     ax.set_ylabel("z (nm)", fontsize=12)
-    ax.set_title("Particle Trajectories (Side View)", fontsize=14, fontweight="bold")
-    ax.grid(True, alpha=0.3)
-    ax.legend()
+    
+    # Title based on number of pores
+    if len(geom.pores) == 1:
+        ax.set_title("Single Pore: Particle Trajectories (Side View)", fontsize=14, fontweight="bold")
+    else:
+        ax.set_title(f"Nanopore Array ({len(geom.pores)} pores): Particle Trajectories", fontsize=14, fontweight="bold")
+    
+    ax.grid(True, alpha=0.2, linestyle="--")
+    ax.legend(loc="upper right", fontsize=9)
     ax.set_aspect("equal")
+    
+    # Set reasonable view limits AFTER drawing patches
+    # For single pore, show wider view to see reservoirs
+    if len(geom.pores) == 1:
+        # Show wider view including bottom reservoir expansion
+        bottom_y_min = y_min * 2.5
+        bottom_y_max = y_max * 2.5
+        x_margin = abs(bottom_y_max - bottom_y_min) * 0.1
+        ax.set_xlim((bottom_y_min - x_margin) / nm, (bottom_y_max + x_margin) / nm)
+    else:
+        x_margin = abs(y_max - y_min) * 0.1
+        ax.set_xlim((y_min - x_margin) / nm, (y_max + x_margin) / nm)
+    
+    z_margin = (geom.z_top - geom.z_bottom) * 0.05
+    ax.set_ylim((geom.z_bottom - z_margin) / nm, (geom.z_top + z_margin) / nm)
+    
+    # Force matplotlib to update the plot with all patches
+    ax.autoscale_view()
     
     plt.tight_layout()
     

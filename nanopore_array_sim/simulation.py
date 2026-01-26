@@ -92,6 +92,8 @@ def run_simulation(config: Optional[dict] = None, config_path: Optional[str] = N
         L_pore_nm=geom_config.get("pore_length_nm", 10.0),
         z_top_nm=geom_config.get("z_top_nm", 100.0),
         z_bottom_nm=geom_config.get("z_bottom_nm", -50.0),
+        r_pore_bottom_nm=geom_config.get("pore_radius_bottom_nm"),
+        taper_type=geom_config.get("taper_type", "constant"),
     )
     
     # Add geometry to config for field computations

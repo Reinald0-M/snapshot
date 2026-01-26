@@ -33,15 +33,15 @@ def main():
             "z_bottom_nm": -50.0,
         },
         "electrostatics": {
-            "Phi_top_mV": 200.0,
-            "Phi_mid_mV": -200.0,
-            "Phi_bottom_mV": -1000.0,
+            "Phi_top_mV": 200.0,  # Positive voltage in top reservoir
+            "Phi_mid_mV": -200.0,  # Negative voltage at bottom of pore opening
+            "Phi_bottom_mV": -1000.0,  # Very large negative voltage in bottom reservoir
             "zeta_top_mV": -50.0,
             "zeta_pore_mV": -100.0,
             "zeta_bottom_mV": -50.0,
         },
         "particles": {
-            "n_particles": 10,
+            "n_particles": 1,
             "radius_nm": 1.0,
             "density_kg_per_m3": 1350.0,
             "z_bare": 5,
@@ -55,7 +55,7 @@ def main():
             "T_K": 298.15,
         },
         "simulation": {
-            "t_max_s": 1e-6,
+            "t_max_s": 1e-8,
             "dt_s": None,  # auto-compute
             "n_tracked": 10,  # track all particles
             "seed": 12345,
@@ -84,8 +84,8 @@ def main():
     # Generate plots
     print("\nGenerating plots...")
     
-    # Trajectory plot
-    fig1 = plot_paths(result)
+    # Trajectory plot (with potential annotations)
+    fig1 = plot_paths(result, show_potential=True)
     fig1.savefig(output_dir / "single_pore_trajectories.png", dpi=150, bbox_inches="tight")
     print(f"  Saved: {output_dir / 'single_pore_trajectories.png'}")
     

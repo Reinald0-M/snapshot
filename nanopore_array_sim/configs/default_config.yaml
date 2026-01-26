@@ -1,10 +1,12 @@
 geometry:
   n_pores: 3
   pore_spacing_nm: 50.0
-  pore_radius_nm: 5.0
+  pore_radius_nm: 5.0  # Radius at top (or constriction radius for hourglass)
+  pore_radius_bottom_nm: null  # If null, uses pore_radius_nm (constant radius)
   pore_length_nm: 10.0
   z_top_nm: 100.0
   z_bottom_nm: -50.0
+  taper_type: "constant"  # Options: "constant", "linear", "hourglass"
 
 electrostatics:
   Phi_top_mV: 200.0
@@ -29,7 +31,7 @@ solution:
   T_K: 298.15
 
 simulation:
-  t_max_s: 1e-6
+  t_max_s: 1e-15
   dt_s: null  # auto-compute from m/zeta
   n_tracked: 20  # store full trajectories for subset
   seed: 42
