@@ -68,8 +68,8 @@ def initialize_particles(
     init_dist = config.get("particles", {}).get("initial_distribution", "uniform")
     init_vel = config.get("particles", {}).get("initial_velocity", "zero")
     
-    # Initial z position: near top of domain
-    z_init = geom.z_top - 5.0 * species.radius  # 5 radii below top
+    # Initial z position: near top of domain (2 radii margin)
+    z_init = geom.z_top - 2.0 * species.radius
     
     # Initialize positions
     if init_dist == "pore_centered" and len(geom.pores) > 0:

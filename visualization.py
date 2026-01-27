@@ -190,17 +190,56 @@ def plot_paths(
     
     # Plot trajectories in green (matching sketch)
     n_tracked = result.Y.shape[1]
-    
+    lateral_period = geom.lateral_period
+
     for j in range(n_tracked):
-        y_traj = result.Y[:, j]
-        z_traj = result.Z[:, j]
+        y_traj_full = result.Y[:, j]
+        z_traj_full = result.Z[:, j]
         
         # Remove NaN values
-        valid = ~(np.isnan(y_traj) | np.isnan(z_traj))
-        if np.any(valid):
+        valid = ~(np.isnan(y_traj_full) | np.isnan(z_traj_full))
+        if not np.any(valid):
+            continue
+            
+        y_traj = y_traj_full[valid]
+        z_traj = z_traj_full[valid]
+        
+        # Check for periodic boundary crossings
+        # If dy > period/2, it's a wrap-around -> do not draw line connecting them
+        dy = np.diff(y_traj)
+        jumps = np.abs(dy) > (lateral_period * 0.5)
+        
+        if np.any(jumps):
+            # Split trajectory into segments at jumps
+            jump_indices = np.where(jumps)[0]
+            
+            start_idx = 0
+            for jump_idx in jump_indices:
+                end_idx = jump_idx + 1
+                ax.plot(
+                    y_traj[start_idx:end_idx] / nm,
+                    z_traj[start_idx:end_idx] / nm,
+                    color="green",
+                    linewidth=1.2,
+                    alpha=0.6,
+                    zorder=4,
+                )
+                start_idx = end_idx
+            
+            # Plot final segment
             ax.plot(
-                y_traj[valid] / nm,
-                z_traj[valid] / nm,
+                y_traj[start_idx:] / nm,
+                z_traj[start_idx:] / nm,
+                color="green",
+                linewidth=1.2,
+                alpha=0.6,
+                zorder=4,
+            )
+        else:
+            # No jumps, plot as single line
+            ax.plot(
+                y_traj / nm,
+                z_traj / nm,
                 color="green",
                 linewidth=1.2,
                 alpha=0.6,

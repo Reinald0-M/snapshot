@@ -29,34 +29,34 @@ def main():
             "pore_spacing_nm": 50.0,  # Not used for single pore
             "pore_radius_nm": 5.0,
             "pore_length_nm": 10.0,
-            "z_top_nm": 30.0,
-            "z_bottom_nm": -50.0,
+            "z_top_nm": 20.0,
+            "z_bottom_nm": -20.0,
             'taper_type': 'constant'
         },
         "electrostatics": {
             "Phi_top_mV": 200.0,  # Positive voltage in top reservoir
             "Phi_mid_mV": -200.0,  # Negative voltage at bottom of pore opening
             "Phi_bottom_mV": -1000.0,  # Very large negative voltage in bottom reservoir
-            "zeta_top_mV": -50.0,
-            "zeta_pore_mV": -100.0,
-            "zeta_bottom_mV": -50.0,
+            "zeta_top_mV": -20.0,
+            "zeta_pore_mV": -20.0,
+            "zeta_bottom_mV": -20.0,
         },
         "particles": {
             "n_particles": 1,
-            "radius_nm": 1.0,
+            "radius_nm": 5.0,
             "density_kg_per_m3": 1350.0,
-            "z_bare": 5,
+            "z_bare": 20,
             "initial_distribution": "pore_centered",
             "initial_velocity": "zero",
         },
         "solution": {
-            "solvent": "water",
+            "solvent": "PBS",
             "salt": "NaCl",
-            "concentration_M": 0.5,
+            "concentration_M": 0.162,
             "T_K": 298.15,
         },
         "simulation": {
-            "t_max_s": 1e-8,
+            "t_max_s": 10e-8,
             "dt_s": None,  # auto-compute
             "n_tracked": 10,  # track all particles
             "seed": 12345,

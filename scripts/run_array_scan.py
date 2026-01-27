@@ -11,9 +11,9 @@ from pathlib import Path
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from nanopore_array_sim import run_simulation
-from nanopore_array_sim.analysis import scan_parameter, compute_pullback_fraction, compute_translocation_stats
-from nanopore_array_sim.visualization import plot_cross_capture_map
+from snapshot import run_simulation
+from snapshot.analysis import scan_parameter, compute_pullback_fraction, compute_translocation_stats
+from snapshot.visualization import plot_cross_capture_map
 import numpy as np
 import matplotlib.pyplot as plt
 
