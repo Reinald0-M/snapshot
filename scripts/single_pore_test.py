@@ -13,6 +13,7 @@ import numpy as np
 def main():
     config = {
         'geometry': {
+            # 'pore_spacing_nm': 50.0,
             'n_pores': 1,
             'pore_radius_nm': 5.0,
             'pore_length_nm': 10.0,
@@ -31,11 +32,11 @@ def main():
             'zeta_bottom_mV': -20.0
         },
         'particles': {
-            'n_particles' : 5,
-            'radius_nm' : 2.0,
+            'n_particles' : 10,
+            'radius_nm' : 4.0,
             'density_kg_per_m3' : 1350.0,
             'z_bare' : 20,
-            'initial_distribution' : 'uniform',
+            'initial_distribution' : 'gaussian',
             'initial_velocity' : 'zero'
         },
         'solution': {
@@ -44,7 +45,7 @@ def main():
             'T_K': 298.15},
         'simulation': {'t_max_s': 10e-8,
             'dt_s': None,
-            'n_tracked': 10,
+            'n_tracked': 5, # Track all 5 particles
             'seed': 12345}
     }
     # Run simulation
@@ -64,7 +65,7 @@ def main():
     
     # Create output directory
     output_dir = Path(__file__).parent.parent / "figs/test/"
-    output_dir.mkdir(exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
     
     # Generate plots
     print("\nGenerating plots...")
@@ -80,7 +81,7 @@ def main():
     print(f"  Saved: {output_dir / 'single_pore_landing.png'}")
     
     # z vs time
-    fig3 = plot_z_vs_time(result, particle_indices=list(range(min(5, result.Z.shape[1]))))
+    fig3 = plot_z_vs_time(result, particle_indices=None) # Track all
     fig3.savefig(output_dir / "single_pore_z_vs_time.png", dpi=150, bbox_inches="tight")
     print(f"  Saved: {output_dir / 'single_pore_z_vs_time.png'}")
     

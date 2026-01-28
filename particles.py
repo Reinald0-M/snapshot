@@ -52,8 +52,9 @@ def initialize_particles(
         Particle species properties
     config : dict
         Configuration dictionary. May contain:
-        - 'particles.initial_distribution': 'uniform' or 'pore_centered'
+        - 'particles.initial_distribution': 'uniform', 'pore_centered', or 'gaussian'
         - 'particles.initial_velocity': 'zero' or 'maxwell_boltzmann'
+        - 'particles.gaussian_std_nm': standard deviation for 'gaussian' (default: pore radius)
     rng : np.random.Generator
         Random number generator
         
@@ -72,7 +73,7 @@ def initialize_particles(
     z_init = geom.z_top - 2.0 * species.radius
     
     # Initialize positions
-    if init_dist == "pore_centered" and len(geom.pores) > 0:
+    if (init_dist == "pore_centered" or init_dist == "gaussian") and len(geom.pores) > 0:
         # Distribute around pore centers
         particles_per_pore = N // len(geom.pores)
         remainder = N % len(geom.pores)
@@ -83,7 +84,14 @@ def initialize_particles(
             
             for _ in range(n_here):
                 # Random offset around pore center
-                offset_y = rng.normal(0, 0.1 * geom.pores[0].r_top)
+                if init_dist == "pore_centered":
+                    std_dev = 0.1 * geom.pores[0].r_top
+                else: 
+                    # Gaussian with configurable width
+                    std_nm = config.get("particles", {}).get("gaussian_std_nm", None)
+                    std_dev = std_nm * 1e-9 if std_nm is not None else pore.r_top
+
+                offset_y = rng.normal(0, std_dev)
                 y_init = pore.center_y + offset_y
                 
                 # Wrap to lateral period

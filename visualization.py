@@ -246,9 +246,13 @@ def plot_paths(
             zorder=3,
         )
     
-    # Plot trajectories in green (matching sketch)
+    # Plot trajectories
     n_tracked = result.Y.shape[1]
     lateral_period = geom.lateral_period
+    
+    # Use consistent colors
+    cmap = plt.cm.tab20
+    colors = [cmap(i % 20) for i in range(n_tracked)]
 
     for j in range(n_tracked):
         y_traj_full = result.Y[:, j]
@@ -261,6 +265,8 @@ def plot_paths(
             
         y_traj = y_traj_full[valid]
         z_traj = z_traj_full[valid]
+        
+        c = colors[j]
         
         # Check for periodic boundary crossings
         # If dy > period/2, it's a wrap-around -> do not draw line connecting them
@@ -277,7 +283,7 @@ def plot_paths(
                 ax.plot(
                     y_traj[start_idx:end_idx] / nm,
                     z_traj[start_idx:end_idx] / nm,
-                    color="green",
+                    color=c,
                     linewidth=1.2,
                     alpha=0.6,
                     zorder=4,
@@ -288,7 +294,7 @@ def plot_paths(
             ax.plot(
                 y_traj[start_idx:] / nm,
                 z_traj[start_idx:] / nm,
-                color="green",
+                color=c,
                 linewidth=1.2,
                 alpha=0.6,
                 zorder=4,
@@ -298,7 +304,7 @@ def plot_paths(
             ax.plot(
                 y_traj / nm,
                 z_traj / nm,
-                color="green",
+                color=c,
                 linewidth=1.2,
                 alpha=0.6,
                 zorder=4,
@@ -513,7 +519,10 @@ def plot_z_vs_time(
     
     fig, ax = plt.subplots(figsize=(10, 6))
     
-    colors = plt.cm.tab10(np.linspace(0, 1, len(particle_indices)))
+    # Use consistent colors
+    cmap = plt.cm.tab20
+    # Map particle indices to colors consistently
+    
     geom = result.geometry
     
     for idx, j in enumerate(particle_indices):
@@ -523,11 +532,13 @@ def plot_z_vs_time(
         z_traj = result.Z[:, j]
         valid = ~np.isnan(z_traj)
         
+        c = cmap(j % 20)
+        
         if np.any(valid):
             ax.plot(
                 result.times[valid] * 1e9,  # Convert to ns
                 z_traj[valid] / nm,
-                color=colors[idx],
+                color=c,
                 linewidth=1.5,
                 alpha=0.8,
                 label=f"Particle {j}",

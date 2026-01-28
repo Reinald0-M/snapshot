@@ -245,29 +245,69 @@ def run_simulation(config: Optional[dict] = None, config_path: Optional[str] = N
                 inside = is_inside_pore(geom, p.r[0], p.r[1])
                 
                 if not inside:
-                    # Reflect from membrane wall
-                    # Simple reflection: reverse z-velocity if moving into wall
-                    if p.v[1] < 0:  # Moving down into membrane
-                        p.v[1] = abs(p.v[1])  # Reflect upward
-                        p.r[1] = max(p.r[1], geom.membrane_top)
-                    elif p.v[1] > 0:  # Moving up into membrane
-                        p.v[1] = -abs(p.v[1])  # Reflect downward
-                        p.r[1] = min(p.r[1], eff_bottom)
-                else:
-                    # Inside pore: check radius constraint
-                    pore_idx = nearest_pore_index(geom, p.r[0], p.r[1])
-                    if pore_idx is not None:
-                        pore = geom.pores[pore_idx]
-                        r_at_z = pore_radius(pore, p.r[1])
-                        dy = p.r[0] - pore.center_y
-                        r_particle = abs(dy)
+                    # Particle is inside the solid membrane block.
+                    # It either entered from top/bottom surfaces or laterally from the pore.
+                    # We infer the entry point using the previous position estimate.
+                    
+                    # Estimate previous z position
+                    z_prev = p.r[1] - p.v[1] * dt
+                    
+                    hit_surface = False
+                    
+                    # Check top surface entry
+                    if z_prev >= geom.membrane_top:
+                        # Hit top surface -> Reflect upward
+                        p.r[1] = geom.membrane_top
+                        p.v[1] = abs(p.v[1]) # Ensure upward velocity
+                        hit_surface = True
                         
-                        if r_particle > r_at_z:
+                    # Check bottom surface entry (effective bottom)
+                    elif z_prev <= eff_bottom:
+                        # Hit bottom surface -> Reflect downward
+                        p.r[1] = eff_bottom
+                        p.v[1] = -abs(p.v[1]) # Ensure downward velocity
+                        hit_surface = True
+                        
+                    if not hit_surface:
+                        # Must have hit a pore wall laterally -> Reflect radially
+                        pore_idx = nearest_pore_index(geom, p.r[0], p.r[1])
+                        
+                        # If for some reason no pore is near (should not happen if we are here),
+                        # fallback to surface reflection based on current z
+                        if pore_idx is None:
+                            if abs(p.r[1] - geom.membrane_top) < abs(p.r[1] - eff_bottom):
+                                p.r[1] = geom.membrane_top
+                                p.v[1] = abs(p.v[1])
+                            else:
+                                p.r[1] = eff_bottom
+                                p.v[1] = -abs(p.v[1])
+                        else:
                             # Reflect radially inward
-                            normal_y = dy / r_particle if r_particle > 0 else 1.0
-                            v_dot_n = p.v[0] * normal_y
-                            p.v[0] -= 2 * v_dot_n * normal_y
+                            pore = geom.pores[pore_idx]
+                            r_at_z = pore_radius(pore, p.r[1]) # Radius at current z
+                            
+                            dy = p.r[0] - pore.center_y
+                            r_current = abs(dy)
+                            
+                            # Normal vector pointing outward from pore center
+                            normal_y = np.sign(dy)
+                            if normal_y == 0: normal_y = 1.0
+                            
+                            # Push particle back to pore boundary
+                            # Ensure we don't push it to r=0 if r_at_z is small
+                            # Just set position to boundary
                             p.r[0] = pore.center_y + normal_y * r_at_z
+                            
+                            # Reflect velocity component normal to wall
+                            # For a vertical wall, this is just x-velocity (here y-velocity)
+                            # Ideally we'd account for taper angle in normal, but radial is decent approx
+                            
+                            # Check if velocity is directing outward
+                            # v dot normal > 0
+                            v_dot_n = p.v[0] * normal_y
+                            if v_dot_n > 0:
+                                # Reverse normal component
+                                p.v[0] -= 2 * v_dot_n * normal_y
             
             # Update pore association
             p.pore_index = nearest_pore_index(geom, p.r[0], p.r[1])
