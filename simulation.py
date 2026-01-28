@@ -214,7 +214,7 @@ def run_simulation(config: Optional[dict] = None, config_path: Optional[str] = N
         langevin_step(particles, geom, species, phys_params, dt, rng, config)
         
         # Apply boundary conditions and constraints
-        for p in particles:
+        for idx, p in enumerate(particles):
             if not p.active:
                 continue
             
@@ -228,9 +228,9 @@ def run_simulation(config: Optional[dict] = None, config_path: Optional[str] = N
             
             # Bottom boundary: mark as translocated
             if p.r[1] < geom.z_bottom:
-                if not translocated_mask[particles.index(p)]:
-                    translocated_mask[particles.index(p)] = True
-                    translocation_time[particles.index(p)] = t
+                if not translocated_mask[idx]:
+                    translocated_mask[idx] = True
+                    translocation_time[idx] = t
                 p.active = False
                 continue
             

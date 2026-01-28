@@ -31,11 +31,11 @@ def main():
             'zeta_bottom_mV': -20.0
         },
         'particles': {
-            'n_particles' : 1,
-            'radius_nm' : 5.0,
+            'n_particles' : 5,
+            'radius_nm' : 2.0,
             'density_kg_per_m3' : 1350.0,
             'z_bare' : 20,
-            'initial_distribution' : 'pore_centered',
+            'initial_distribution' : 'uniform',
             'initial_velocity' : 'zero'
         },
         'solution': {
