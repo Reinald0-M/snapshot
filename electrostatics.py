@@ -50,6 +50,8 @@ def phi_profile(z: np.ndarray, config: dict) -> np.ndarray:
     z_mem_top = config.get("geometry", {}).get("membrane_top", 0.0)
     z_mem_bot = config.get("geometry", {}).get("membrane_bottom", -10.0 * nm)
     z_bot = config.get("geometry", {}).get("z_bottom", -50.0 * nm)
+    z_trans_h = config.get("geometry", {}).get("transition_height", 0.0)
+    z_trans_bot = z_mem_bot - float(z_trans_h or 0.0)
     
     # Piecewise linear interpolation
     phi_flat = np.zeros_like(z_flat)
@@ -66,12 +68,19 @@ def phi_profile(z: np.ndarray, config: dict) -> np.ndarray:
     # Membrane/pore: constant phi_mid
     mask_mem = (z_flat >= z_mem_bot) & (z_flat < z_mem_top)
     phi_flat[mask_mem] = phi_mid
+
+    # Transition region below pore: constant potential (no electric field)
+    # This models your requirement: the transition section has no potential drop;
+    # the bottom-of-pore potential is carried through this region.
+    if z_trans_bot < z_mem_bot:
+        mask_trans = (z_flat >= z_trans_bot) & (z_flat < z_mem_bot)
+        phi_flat[mask_trans] = phi_mid
     
     # Bottom reservoir: linear from phi_mid to phi_bot
-    mask_bot = z_flat < z_mem_bot
+    mask_bot = z_flat < z_trans_bot
     if np.any(mask_bot):
-        if z_bot < z_mem_bot:
-            alpha = (z_flat[mask_bot] - z_mem_bot) / (z_bot - z_mem_bot)
+        if z_bot < z_trans_bot:
+            alpha = (z_flat[mask_bot] - z_trans_bot) / (z_bot - z_trans_bot)
             phi_flat[mask_bot] = phi_mid + alpha * (phi_bot - phi_mid)
         else:
             phi_flat[mask_bot] = phi_bot
@@ -111,6 +120,8 @@ def Ez_profile(z: np.ndarray, config: dict) -> np.ndarray:
     z_mem_top = config.get("geometry", {}).get("membrane_top", 0.0)
     z_mem_bot = config.get("geometry", {}).get("membrane_bottom", -10.0 * nm)
     z_bot = config.get("geometry", {}).get("z_bottom", -50.0 * nm)
+    z_trans_h = config.get("geometry", {}).get("transition_height", 0.0)
+    z_trans_bot = z_mem_bot - float(z_trans_h or 0.0)
     
     # Piecewise constant E_z = -dphi/dz
     Ez_flat = np.zeros_like(z_flat)
@@ -123,11 +134,16 @@ def Ez_profile(z: np.ndarray, config: dict) -> np.ndarray:
     # Membrane/pore: zero field (constant potential)
     mask_mem = (z_flat >= z_mem_bot) & (z_flat < z_mem_top)
     Ez_flat[mask_mem] = 0.0
+
+    # Transition region: explicitly zero field
+    if z_trans_bot < z_mem_bot:
+        mask_trans = (z_flat >= z_trans_bot) & (z_flat < z_mem_bot)
+        Ez_flat[mask_trans] = 0.0
     
     # Bottom reservoir
-    mask_bot = z_flat < z_mem_bot
-    if np.any(mask_bot) and z_bot < z_mem_bot:
-        Ez_flat[mask_bot] = -(phi_bot - phi_mid) / (z_bot - z_mem_bot)
+    mask_bot = z_flat < z_trans_bot
+    if np.any(mask_bot) and z_bot < z_trans_bot:
+        Ez_flat[mask_bot] = -(phi_bot - phi_mid) / (z_bot - z_trans_bot)
     
     return Ez_flat.reshape(shape)
 

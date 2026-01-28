@@ -118,6 +118,24 @@ def plot_paths(
             label="Bottom Reservoir",
         )
         ax.add_patch(bottom_reservoir)
+
+    # IMPORTANT: Outside the pore transition, keep the material as "membrane".
+    # We draw a membrane-colored extension that covers the transition depth
+    # everywhere except where the transition opening is (cut out by the pore patch).
+    if max_transition_height > 0:
+        mem_ext_height = max_transition_height
+        mem_ext = patches.Rectangle(
+            (y_min / nm, mem_bottom_draw / nm),
+            (y_max - y_min) / nm,
+            mem_ext_height / nm,
+            facecolor="gray",
+            edgecolor="black",
+            linewidth=2.5,
+            alpha=0.7,
+            zorder=2,
+            label="_nolegend_",  # avoid duplicate legend entry
+        )
+        ax.add_patch(mem_ext)
     
     # Draw membrane as solid block - make it clearly visible
     mem_height = geom.membrane_top - geom.membrane_bottom
@@ -190,11 +208,12 @@ def plot_paths(
             pore_y_trans = np.concatenate([y_left_trans, y_right_trans[::-1], [y_left_trans[0]]]) / nm
             pore_z_trans = np.concatenate([z_trans, z_trans[::-1], [z_trans[0]]]) / nm
             
-            # Transition cone with different color (e.g., light yellow)
+            # Transition section: open fluid region (no potential drop / no field).
+            # Keep it visually distinct via outline, but interior is open (white).
             pore_patch_trans = patches.Polygon(
                 list(zip(pore_y_trans, pore_z_trans)),
-                facecolor="lightyellow",  # Different fill color
-                edgecolor="blue",
+                facecolor="white",
+                edgecolor="orange",
                 linewidth=3,
                 zorder=4,
             )
@@ -204,7 +223,15 @@ def plot_paths(
         if pore.transition_height > 0:
             # Combined outline or separate? Let's keep them visually distinct but connected
             # Outline for transition
-             ax.plot(pore_y_trans, pore_z_trans, color="orange", linewidth=3, zorder=5, alpha=0.9, label="Pore Transition" if idx == 0 else "")
+            ax.plot(
+                pore_y_trans,
+                pore_z_trans,
+                color="orange",
+                linewidth=3,
+                zorder=5,
+                alpha=0.9,
+                label="Pore Transition" if idx == 0 else "",
+            )
         
         # ax.plot(pore_y_main, pore_z_main, color="blue", linewidth=3, zorder=5, alpha=0.9, label="Pore" if idx == 0 else "")
         

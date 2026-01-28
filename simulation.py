@@ -98,6 +98,11 @@ def run_simulation(config: Optional[dict] = None, config_path: Optional[str] = N
         transition_angle_deg=geom_config.get("transition_angle_deg", 0.0),
     )
     
+    # Derive max transition height (meters) for field/BC regioning
+    max_transition_height = 0.0
+    if hasattr(geom, "pores") and len(geom.pores) > 0:
+        max_transition_height = max(p.transition_height for p in geom.pores)
+
     # Add geometry to config for field computations
     config["geometry"] = {
         **geom_config,
@@ -105,6 +110,8 @@ def run_simulation(config: Optional[dict] = None, config_path: Optional[str] = N
         "z_bottom": geom.z_bottom,
         "membrane_top": geom.membrane_top,
         "membrane_bottom": geom.membrane_bottom,
+        # Used by electrostatics to create a field-free transition region
+        "transition_height": max_transition_height,
     }
     
     # Create particle species
