@@ -94,6 +94,8 @@ def run_simulation(config: Optional[dict] = None, config_path: Optional[str] = N
         z_bottom_nm=geom_config.get("z_bottom_nm", -50.0),
         r_pore_bottom_nm=geom_config.get("pore_radius_bottom_nm"),
         taper_type=geom_config.get("taper_type", "constant"),
+        transition_height_nm=geom_config.get("transition_height_nm", 0.0),
+        transition_angle_deg=geom_config.get("transition_angle_deg", 0.0),
     )
     
     # Add geometry to config for field computations
@@ -226,7 +228,12 @@ def run_simulation(config: Optional[dict] = None, config_path: Optional[str] = N
                 continue
             
             # Membrane constraints
-            if geom.membrane_bottom <= p.r[1] <= geom.membrane_top:
+            # Calculate effective bottom including transition region
+            eff_bottom = geom.membrane_bottom
+            if len(geom.pores) > 0:
+                eff_bottom -= max(p.transition_height for p in geom.pores)
+            
+            if eff_bottom <= p.r[1] <= geom.membrane_top:
                 # Check if inside any pore
                 inside = is_inside_pore(geom, p.r[0], p.r[1])
                 
@@ -238,7 +245,7 @@ def run_simulation(config: Optional[dict] = None, config_path: Optional[str] = N
                         p.r[1] = max(p.r[1], geom.membrane_top)
                     elif p.v[1] > 0:  # Moving up into membrane
                         p.v[1] = -abs(p.v[1])  # Reflect downward
-                        p.r[1] = min(p.r[1], geom.membrane_bottom)
+                        p.r[1] = min(p.r[1], eff_bottom)
                 else:
                     # Inside pore: check radius constraint
                     pore_idx = nearest_pore_index(geom, p.r[0], p.r[1])

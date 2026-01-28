@@ -80,12 +80,22 @@ def langevin_step(
     
     # Select zeta based on region
     zeta_array = np.zeros_like(z_positions)
+    
+    # Get max transition height
+    max_trans = 0.0
+    if hasattr(geom, "pores") and len(geom.pores) > 0:
+        max_trans = max(p.transition_height for p in geom.pores)
+        
+    z_trans_bottom = geom.membrane_bottom - max_trans
+    
     mask_top = z_positions >= geom.membrane_top
     mask_mem = (z_positions >= geom.membrane_bottom) & (z_positions < geom.membrane_top)
-    mask_bot = z_positions < geom.membrane_bottom
+    mask_trans = (z_positions >= z_trans_bottom) & (z_positions < geom.membrane_bottom)
+    mask_bot = z_positions < z_trans_bottom
     
     zeta_array[mask_top] = zeta_top
     zeta_array[mask_mem] = zeta_pore
+    zeta_array[mask_trans] = 0.0  # Transition region carries no charge
     zeta_array[mask_bot] = zeta_bottom
     
     # Compute electro-osmotic velocity at each position

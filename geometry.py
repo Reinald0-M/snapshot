@@ -19,6 +19,10 @@ class Pore:
     z_bottom: float  # bottom of pore opening (meters)
     r_top: float  # radius at top (meters)
     r_bottom: float  # radius at bottom (meters)
+    transition_height: float = 0.0  # height of transition region below z_bottom (meters)
+    transition_angle_deg: float = 0.0  # opening angle of transition region (degrees)
+    transition_height: float = 0.0  # height of transition region (meters)
+    transition_angle: float = 0.0  # angle of transition region (radians)
 
 
 @dataclass
@@ -41,6 +45,8 @@ def build_simple_array(
     z_bottom_nm: float,
     r_pore_bottom_nm: Optional[float] = None,
     taper_type: str = "constant",
+    transition_height_nm: float = 0.0,
+    transition_angle_deg: float = 0.0,
 ) -> Geometry:
     """
     Build a simple array of identical nanopores.
@@ -64,6 +70,10 @@ def build_simple_array(
     taper_type : str
         Type of taper: "constant" (cylindrical), "linear" (linear taper),
         "hourglass" (wider at top/bottom, narrow in middle)
+    transition_height_nm : float
+        Height of the conical transition region below the pore (nm)
+    transition_angle_deg : float
+        Opening angle of the transition region (degrees from vertical)
         
     Returns
     -------
@@ -77,6 +87,7 @@ def build_simple_array(
     L_pore = L_pore_nm * nm
     z_top = z_top_nm * nm
     z_bottom = z_bottom_nm * nm
+    transition_height = transition_height_nm * nm
     
     # Define membrane boundaries (centered in domain)
     # Place membrane roughly in middle of domain
@@ -104,6 +115,8 @@ def build_simple_array(
             z_bottom=membrane_bottom,
             r_top=r_pore_top,
             r_bottom=r_pore_bot,
+            transition_height=transition_height,
+            transition_angle_deg=transition_angle_deg,
         )
         pores.append(pore)
     
@@ -129,6 +142,8 @@ def pore_radius(pore: Pore, z: float, taper_type: str = "linear") -> float:
     - "hourglass": Wider at top/bottom, narrowest in middle
     - "constant": Constant radius (if r_top == r_bottom)
     
+    Also handles the transition region below the pore if defined.
+    
     Parameters
     ----------
     pore : Pore
@@ -143,6 +158,16 @@ def pore_radius(pore: Pore, z: float, taper_type: str = "linear") -> float:
     float
         Pore radius at z (meters)
     """
+    # Check if in transition region (below pore bottom)
+    if pore.transition_height > 0:
+        z_transition_bottom = pore.z_bottom - pore.transition_height
+        if z_transition_bottom <= z < pore.z_bottom:
+            # In conical transition region
+            dist_down = pore.z_bottom - z
+            angle_rad = np.radians(abs(pore.transition_angle_deg))
+            r_cone = pore.r_bottom + dist_down * np.tan(angle_rad)
+            return r_cone
+
     if z < pore.z_bottom or z > pore.z_top:
         return 0.0
     
@@ -186,8 +211,14 @@ def is_inside_pore(geom: Geometry, y: float, z: float) -> bool:
     bool
         True if point is inside any pore
     """
-    # Must be within membrane z-range
-    if z < geom.membrane_bottom or z > geom.membrane_top:
+    # Check against extended bounds if transition regions exist
+    min_z = geom.membrane_bottom
+    if len(geom.pores) > 0:
+        max_trans = max(p.transition_height for p in geom.pores)
+        min_z -= max_trans
+        
+    # Must be within membrane z-range (extended)
+    if z < min_z or z > geom.membrane_top:
         return False
     
     # Check each pore
@@ -226,8 +257,14 @@ def nearest_pore_index(geom: Geometry, y: float, z: float) -> Optional[int]:
     int or None
         Index of nearest pore, or None if outside membrane
     """
-    # Must be within membrane z-range
-    if z < geom.membrane_bottom or z > geom.membrane_top:
+    # Check against extended bounds if transition regions exist
+    min_z = geom.membrane_bottom
+    if len(geom.pores) > 0:
+        max_trans = max(p.transition_height for p in geom.pores)
+        min_z -= max_trans
+
+    # Must be within membrane z-range (extended)
+    if z < min_z or z > geom.membrane_top:
         return None
     
     if len(geom.pores) == 0:

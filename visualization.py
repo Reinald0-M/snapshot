@@ -89,7 +89,14 @@ def plot_paths(
         ax.add_patch(top_reservoir)
     
     # Draw bottom reservoir (below membrane) - wider opening, clearly visible
-    bottom_reservoir_height = geom.membrane_bottom - geom.z_bottom
+    # Calculate effective bottom of membrane (including transition cone)
+    max_transition_height = 0.0
+    if len(geom.pores) > 0:
+        max_transition_height = max(p.transition_height for p in geom.pores)
+    
+    mem_bottom_draw = geom.membrane_bottom - max_transition_height
+    bottom_reservoir_height = mem_bottom_draw - geom.z_bottom
+    
     if bottom_reservoir_height > 0:
         # Bottom reservoir opens wider
         if len(geom.pores) == 1:
@@ -138,7 +145,8 @@ def plot_paths(
     
     for idx, pore in enumerate(geom.pores):
         # Create tapered pore shape by sampling radius at multiple z positions
-        z_samples = np.linspace(pore.z_bottom, pore.z_top, 100)  # More samples for smoother curve
+        z_start = pore.z_bottom - pore.transition_height
+        z_samples = np.linspace(z_start, pore.z_top, 100)  # More samples for smoother curve
         
         # Use linear interpolation by default to match actual physics
         # The pore_radius function handles the shape based on taper_type passed here.
@@ -147,41 +155,64 @@ def plot_paths(
         # But for constant radius, we definitely want linear (cylinder).
         
         taper_type = "linear" # Default to linear for visualization unless we have info otherwise
-        r_samples = [pore_radius(pore, z, taper_type=taper_type) for z in z_samples]
         
-        # Create pore outline (left and right boundaries)
-        y_left = np.array([pore.center_y - r for r in r_samples])
-        y_right = np.array([pore.center_y + r for r in r_samples])
+        # Split drawing into two parts: main pore and transition region
         
-        # Combine into closed polygon (convert to nm for plotting)
-        pore_y_nm = np.concatenate([y_left, y_right[::-1], [y_left[0]]]) / nm
-        pore_z_nm = np.concatenate([z_samples, z_samples[::-1], [z_samples[0]]]) / nm
+        # 1. Main Pore (Cylindrical/Tapered part)
+        z_main = np.linspace(pore.z_bottom, pore.z_top, 50)
+        r_main = [pore_radius(pore, z, taper_type=taper_type) for z in z_main]
         
-        # Draw pore opening - make it clearly visible with white fill and blue border
-        pore_patch = patches.Polygon(
-            list(zip(pore_y_nm, pore_z_nm)),
+        y_left_main = np.array([pore.center_y - r for r in r_main])
+        y_right_main = np.array([pore.center_y + r for r in r_main])
+        
+        pore_y_main = np.concatenate([y_left_main, y_right_main[::-1], [y_left_main[0]]]) / nm
+        pore_z_main = np.concatenate([z_main, z_main[::-1], [z_main[0]]]) / nm
+        
+        pore_patch_main = patches.Polygon(
+            list(zip(pore_y_main, pore_z_main)),
             facecolor="white",
             edgecolor="blue",
-            linewidth=3,  # Thicker line for visibility
-            zorder=4,  # Above membrane
+            linewidth=3,
+            zorder=4,
             label="Pore" if idx == 0 else "",
         )
-        ax.add_patch(pore_patch)
+        ax.add_patch(pore_patch_main)
         
-        # Also draw the outline explicitly for better visibility
-        ax.plot(
-            pore_y_nm,
-            pore_z_nm,
-            color="blue",
-            linewidth=3,
-            zorder=5,
-            alpha=0.9,
-        )
+        # 2. Transition Region (if exists)
+        if pore.transition_height > 0:
+            z_trans_start = pore.z_bottom - pore.transition_height
+            z_trans = np.linspace(z_trans_start, pore.z_bottom, 30)
+            r_trans = [pore_radius(pore, z, taper_type=taper_type) for z in z_trans]
+            
+            y_left_trans = np.array([pore.center_y - r for r in r_trans])
+            y_right_trans = np.array([pore.center_y + r for r in r_trans])
+            
+            pore_y_trans = np.concatenate([y_left_trans, y_right_trans[::-1], [y_left_trans[0]]]) / nm
+            pore_z_trans = np.concatenate([z_trans, z_trans[::-1], [z_trans[0]]]) / nm
+            
+            # Transition cone with different color (e.g., light yellow)
+            pore_patch_trans = patches.Polygon(
+                list(zip(pore_y_trans, pore_z_trans)),
+                facecolor="lightyellow",  # Different fill color
+                edgecolor="blue",
+                linewidth=3,
+                zorder=4,
+            )
+            ax.add_patch(pore_patch_trans)
+        
+        # Draw outlines for visibility
+        if pore.transition_height > 0:
+            # Combined outline or separate? Let's keep them visually distinct but connected
+            # Outline for transition
+             ax.plot(pore_y_trans, pore_z_trans, color="orange", linewidth=3, zorder=5, alpha=0.9, label="Pore Transition" if idx == 0 else "")
+        
+        # ax.plot(pore_y_main, pore_z_main, color="blue", linewidth=3, zorder=5, alpha=0.9, label="Pore" if idx == 0 else "")
         
         # Draw pore centerline (dashed) - convert to nm
+        centerline_bottom = (pore.z_bottom - pore.transition_height) if pore.transition_height > 0 else pore.z_bottom
         ax.plot(
             [pore.center_y / nm, pore.center_y / nm],
-            [pore.z_bottom / nm, pore.z_top / nm],
+            [centerline_bottom / nm, pore.z_top / nm],
             "b--",
             alpha=0.5,
             linewidth=1.5,

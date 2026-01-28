@@ -28,6 +28,7 @@ SALTS = {
     "KCl": [(1, 1), (1, -1)],
     "MgCl2": [(1, 2), (2, -1)],
     "CaCl2": [(1, 2), (2, -1)],
+    "None": [],
 }
 
 
@@ -52,6 +53,9 @@ def ionic_strength(molarity: float, salt_type: str = "NaCl") -> float:
     ValueError
         If salt_type is not defined in SALTS
     """
+    if salt_type is None or salt_type == "None":
+        return 0.0
+
     if salt_type not in SALTS:
         raise ValueError(f"Salt {salt_type} not defined. Available: {list(SALTS.keys())}")
     
